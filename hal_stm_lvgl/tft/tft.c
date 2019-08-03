@@ -46,6 +46,7 @@ static void tft_flush_cb(lv_disp_drv_t * drv, const lv_area_t * area, lv_color_t
 static void my_mem_fill_cb(lv_disp_drv_t *disp_drv, lv_color_t * dest_buf, lv_coord_t dest_width,
         const lv_area_t * fill_area, lv_color_t color);
 static void my_mem_blend_cb(lv_disp_drv_t * disp_drv, lv_color_t * dest, const lv_color_t * src, uint32_t length, lv_opa_t opa);
+void my_monitor_cb(lv_disp_drv_t * disp_drv, uint32_t time, uint32_t px);
 
 /*DMA2D*/
 static void DMA2D_Config(void);
@@ -145,9 +146,9 @@ void tft_init(void)
 
 		/*Set up the functions to access to your display*/
 
-
 		/*Used to copy the buffer's content to the display*/
 		disp_drv.flush_cb = tft_flush_cb;
+		disp_drv.monitor_cb = my_monitor_cb;
 
 		/*Set a display buffer*/
 		disp_drv.buffer = &disp_buf_1;
@@ -160,8 +161,7 @@ void tft_init(void)
 #endif
 
 	 lv_disp_t * disp;
-
-    disp=lv_disp_drv_register(&disp_drv);
+     disp=lv_disp_drv_register(&disp_drv);
 }
 
 /**********************
@@ -184,12 +184,13 @@ static void tft_flush_cb(lv_disp_drv_t * drv, const lv_area_t * area, lv_color_t
 
 	lv_disp_flush_ready(drv);
 }
-
+void my_monitor_cb(lv_disp_drv_t * disp_drv, uint32_t time, uint32_t px)
+{
+  printf("%d px refreshed in %d ms\n",px,time);
+}
 #if LV_USE_GPU != 0
 static void my_mem_blend_cb(lv_disp_drv_t *disp_drv, lv_color_t * dest, const lv_color_t * src, uint32_t length, lv_opa_t opa)
 {
-	/*Wait for the previous operation*/
-//	HAL_DMA2D_PollForTransfer(&hdma2d_discovery, 10);
     hdma2d_discovery.Init.Mode         = DMA2D_M2M_BLEND;
 #if LV_COLOR_DEPTH == 8
     hdma2d_discovery.Init.ColorMode = DMA2D_INPUT_A8;
@@ -199,11 +200,11 @@ static void my_mem_blend_cb(lv_disp_drv_t *disp_drv, lv_color_t * dest, const lv
     hdma2d_discovery.Init.ColorMode = DMA2D_INPUT_ARGB8888;
 #endif
 			/* DMA2D Initialization */
-    if(HAL_DMA2D_Init(&hdma2d_discovery) != HAL_OK)
+    /*if(HAL_DMA2D_Init(&hdma2d_discovery) != HAL_OK)
 	{
-	/* Initialization Error */
+	 Initialization Error
 	  while(1);
-	}
+	}*/
     hdma2d_discovery.LayerCfg[1].InputAlpha = 0xff;
 #if LV_COLOR_DEPTH == 8
     hdma2d_discovery.LayerCfg[1].InputColorMode = DMA2D_INPUT_A8;
@@ -234,11 +235,11 @@ static void my_mem_blend_cb(lv_disp_drv_t *disp_drv, lv_color_t * dest, const lv
 	HAL_DMA2D_ConfigLayer(&hdma2d_discovery, 0);
 	HAL_DMA2D_ConfigLayer(&hdma2d_discovery, 1);
 
-	//HAL_DMA2D_BlendingStart_IT(&hdma2d_discovery, (uint32_t) src, (uint32_t) dest, (uint32_t)dest, length, 1);
 	 if(HAL_DMA2D_Init(&hdma2d_discovery) == HAL_OK)
 		{
 			if(HAL_DMA2D_ConfigLayer(&hdma2d_discovery, 1) == HAL_OK)
 			{
+			    refreshRequested = true ;
 				dma2d_done = 0;
 				if (HAL_DMA2D_BlendingStart_IT(&hdma2d_discovery, (uint32_t) src, (uint32_t) dest, (uint32_t)dest, length, 1)== HAL_OK)
 				{
@@ -262,11 +263,11 @@ hdma2d_discovery.Init.ColorMode = DMA2D_INPUT_RGB565;
 hdma2d_discovery.Init.ColorMode = DMA2D_INPUT_ARGB8888;
 #endif
 	/* DMA2D Initialization */
-if(HAL_DMA2D_Init(&hdma2d_discovery) != HAL_OK)
+/*if(HAL_DMA2D_Init(&hdma2d_discovery) != HAL_OK)
 	   {
-	     /* Initialization Error */
+	      Initialization Error
 	     while(1);
-	   }
+	   }*/
 
 hdma2d_discovery.LayerCfg[1].InputAlpha = 0xff;
 #if LV_COLOR_DEPTH == 8
@@ -288,12 +289,11 @@ HAL_DMA2D_ConfigLayer(&hdma2d_discovery, 1);
 
 	uint32_t i;
 	for(i = fill_area->y1; i <= fill_area->y2; i++) {
-//	HAL_DMA2D_PollForTransfer(&hdma2d_discovery, 10);
-//	HAL_DMA2D_BlendingStart_IT(&hdma2d_discovery, (uint32_t) lv_color_to32(color), (uint32_t) dest_buf_ofs, (uint32_t)dest_buf_ofs, area_w, 1);
 		if(HAL_DMA2D_Init(&hdma2d_discovery) == HAL_OK)
 		   {
 			if(HAL_DMA2D_ConfigLayer(&hdma2d_discovery, 1) == HAL_OK)
 				{
+				    refreshRequested = true ;
 					dma2d_done = 0;
 				if (HAL_DMA2D_BlendingStart_IT(&hdma2d_discovery, (uint32_t) lv_color_to32(color), (uint32_t) dest_buf_ofs, (uint32_t)dest_buf_ofs, area_w, 1) == HAL_OK)
 				{
@@ -463,10 +463,6 @@ static void LCD_Config(void)
     HAL_LTDC_SetPitch(&hltdc_discovery,800, 0);
 
     __HAL_LTDC_ENABLE(&hltdc_discovery);
-
-
-	/* Refresh the display */
-//	HAL_DSI_Refresh(&hdsi_discovery);
 }
 
 static void DMA2D_Config(void)
@@ -525,7 +521,6 @@ static void CopyBuffer(const uint32_t *pSrc, uint32_t *pDst, uint16_t x, uint16_
 	/**********************
 	 * Using DMA2D should be better and faster but makes artifacts on the screen
 	 **********************/
-
 	uint32_t destination = (uint32_t)pDst + (y * 800 + x) * 2;
 	uint32_t source      = (uint32_t)pSrc;
 
@@ -591,34 +586,13 @@ void LCD_SetUpdateRegionRight()
 
 void HAL_DSI_TearingEffectCallback(DSI_HandleTypeDef* hdsi_discovery)
 {
-	/* GPIO::set(GPIO::VSYNC_FREQ);
-
-	    HAL::getInstance()->vSync();
-	    OSWrappers::signalVSync();
-*/
-	/*    if (!doubleBufferingEnabled && HAL::getInstance())
-	    {
-	        // In single buffering, only require that the system waits for display update to be finished if we
-	        // actually intend to update the display in this frame.
-	       // HAL::getInstance()->lockDMAToFrontPorch(refreshRequested);
-	    }
-*/
 	    if (refreshRequested && !displayRefreshing)
 	    {
-	        // We have an update pending.
-/*	        if (doubleBufferingEnabled && HAL::getInstance())
-	        {
-	            // Swap frame buffers immediately instead of waiting for the task to be scheduled in.
-	            // Note: task will also swap when it wakes up, but that operation is guarded and will not have
-	            // any effect if already swapped.
-	         //   HAL::getInstance()->swapFrameBuffers();
-	        }*/
-
 	        // Update region 0 = first area of display (First quarter for 16bpp, first half for 24bpp)
 	        updateRegion = 0;
 
 	        //Set update region based on bit depth of framebuffer. 16pp or 24bpp.
-	        if (LV_COLOR_DEPTH == 24)
+	        if (LV_COLOR_DEPTH == 32)
 	        {
 	            LCD_SetUpdateRegionLeft();
 	        }
@@ -634,14 +608,14 @@ void HAL_DSI_TearingEffectCallback(DSI_HandleTypeDef* hdsi_discovery)
 	    }
 	    else
 	    {
-	   //     GPIO::clear(GPIO::VSYNC_FREQ);
+
 	    }
 }
 void HAL_DSI_EndOfRefreshCallback(DSI_HandleTypeDef* hdsi_discovery)
 {
     if (displayRefreshing)
     {
-        if (LV_COLOR_DEPTH == 24)
+        if (LV_COLOR_DEPTH == 32)
         {
             if (updateRegion == 0)
             {
@@ -662,15 +636,7 @@ void HAL_DSI_EndOfRefreshCallback(DSI_HandleTypeDef* hdsi_discovery)
                 __HAL_LTDC_RELOAD_CONFIG(&hltdc_discovery);
                 LCD_SetUpdateRegionLeft(); //Set display column to 0-399
                 __HAL_DSI_WRAPPER_ENABLE(hdsi_discovery);
-
-                //GPIO::clear(GPIO::VSYNC_FREQ);
-
                 displayRefreshing = false;
-               /* if (HAL::getInstance())
-                {
-                    // Signal to the framework that display update has finished.
-                    HAL::getInstance()->frontPorchEntered();
-                }*/
             }
         }
         else   //Default to 16bpp
@@ -694,14 +660,8 @@ void HAL_DSI_EndOfRefreshCallback(DSI_HandleTypeDef* hdsi_discovery)
                 LCD_SetUpdateRegion(0);
                 __HAL_DSI_WRAPPER_ENABLE(hdsi_discovery);
 
-             //   GPIO::clear(GPIO::VSYNC_FREQ);
-
                 displayRefreshing = false;
-              /*  if (HAL::getInstance())
-                {
-                    // Signal to the framework that display update has finished.
-                    HAL::getInstance()->frontPorchEntered();
-                }*/
+
             }
         }
     }
