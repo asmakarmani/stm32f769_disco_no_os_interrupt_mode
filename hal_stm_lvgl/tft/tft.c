@@ -115,6 +115,8 @@ uint8_t pPage[] = { 0x00, 0x00, 0x01, 0xDF }; /*   0 -> 479 */
  **********************/
 static lv_disp_buf_t disp_buf_1;
 static lv_color_t buf1_1[LV_HOR_RES_MAX * 10];
+
+
 /**
  * Initialize your display here
  */
@@ -122,9 +124,6 @@ void tft_init(void)
 {
 	BSP_SDRAM_Init();
 	LCD_Config();
-	//BSP_LCD_LayerDefaultInit(0, LAYER0_ADDRESS);
-	//BSP_LCD_SelectLayer(0);
-
 	/* Send Display On DCS Command to display */
 	/*HAL_DSI_ShortWrite(&(hdsi_discovery),
 			0,
@@ -132,36 +131,28 @@ void tft_init(void)
 			OTM8009A_CMD_DISPON,
 			0x00);*/
 	LCD_ReqTear();
-	/*Refresh the LCD display*/
-//	HAL_DSI_Refresh(&hdsi_discovery);
-    lv_disp_buf_init(&disp_buf_1, buf1_1, NULL, LV_HOR_RES_MAX * 10);   /*Initialize the display buffer*/
-
-
+    lv_disp_buf_init(&disp_buf_1, buf1_1,NULL, LV_HOR_RES_MAX * 10);   /*Initialize the display buffer*/
 		/*-----------------------------------
 		* Register the display in LittlevGL
 		*----------------------------------*/
 
-		lv_disp_drv_t disp_drv;                         /*Descriptor of a display driver*/
-		lv_disp_drv_init(&disp_drv);                    /*Basic initialization*/
-
-		/*Set up the functions to access to your display*/
-
+	lv_disp_drv_t disp_drv;                         /*Descriptor of a display driver*/
+	lv_disp_drv_init(&disp_drv);                    /*Basic initialization*/
 		/*Used to copy the buffer's content to the display*/
-		disp_drv.flush_cb = tft_flush_cb;
-		disp_drv.monitor_cb = my_monitor_cb;
+	disp_drv.flush_cb = tft_flush_cb;
+	disp_drv.monitor_cb = my_monitor_cb;
 
 		/*Set a display buffer*/
-		disp_drv.buffer = &disp_buf_1;
-		DMA2D_Config();
+	disp_drv.buffer = &disp_buf_1;
+	DMA2D_Config();
 
 #if	LV_USE_GPU
     disp_drv.gpu_blend_cb = my_mem_blend_cb;
     disp_drv.gpu_fill_cb = my_mem_fill_cb;
 	DMA2D_Config();
 #endif
-
-	 lv_disp_t * disp;
-     disp=lv_disp_drv_register(&disp_drv);
+    lv_disp_t * disp;
+    disp=lv_disp_drv_register(&disp_drv);
 }
 
 /**********************
@@ -199,12 +190,6 @@ static void my_mem_blend_cb(lv_disp_drv_t *disp_drv, lv_color_t * dest, const lv
 #elif LV_COLOR_DEPTH == 24 || LV_COLOR_DEPTH == 32
     hdma2d_discovery.Init.ColorMode = DMA2D_INPUT_ARGB8888;
 #endif
-			/* DMA2D Initialization */
-    /*if(HAL_DMA2D_Init(&hdma2d_discovery) != HAL_OK)
-	{
-	 Initialization Error
-	  while(1);
-	}*/
     hdma2d_discovery.LayerCfg[1].InputAlpha = 0xff;
 #if LV_COLOR_DEPTH == 8
     hdma2d_discovery.LayerCfg[1].InputColorMode = DMA2D_INPUT_A8;
@@ -258,29 +243,22 @@ static void my_mem_fill_cb(lv_disp_drv_t *disp_drv, lv_color_t * dest_buf, lv_co
 #if LV_COLOR_DEPTH == 8
 hdma2d_discovery.Init.ColorMode = DMA2D_INPUT_A8;
 #elif LV_COLOR_DEPTH == 16
-hdma2d_discovery.Init.ColorMode = DMA2D_INPUT_RGB565;
+	hdma2d_discovery.Init.ColorMode = DMA2D_INPUT_RGB565;
 #elif LV_COLOR_DEPTH == 24 || LV_COLOR_DEPTH == 32
-hdma2d_discovery.Init.ColorMode = DMA2D_INPUT_ARGB8888;
+	hdma2d_discovery.Init.ColorMode = DMA2D_INPUT_ARGB8888;
 #endif
-	/* DMA2D Initialization */
-/*if(HAL_DMA2D_Init(&hdma2d_discovery) != HAL_OK)
-	   {
-	      Initialization Error
-	     while(1);
-	   }*/
-
-hdma2d_discovery.LayerCfg[1].InputAlpha = 0xff;
+	hdma2d_discovery.LayerCfg[1].InputAlpha = 0xff;
 #if LV_COLOR_DEPTH == 8
-hdma2d_discovery.LayerCfg[1].InputColorMode = DMA2D_INPUT_A8;
+	hdma2d_discovery.LayerCfg[1].InputColorMode = DMA2D_INPUT_A8;
 #elif LV_COLOR_DEPTH == 16
-hdma2d_discovery.LayerCfg[1].InputColorMode = DMA2D_INPUT_RGB565;
+	hdma2d_discovery.LayerCfg[1].InputColorMode = DMA2D_INPUT_RGB565;
 #elif LV_COLOR_DEPTH == 24 || LV_COLOR_DEPTH == 32
-hdma2d_discovery.LayerCfg[1].InputColorMode = DMA2D_INPUT_ARGB8888;
+	hdma2d_discovery.LayerCfg[1].InputColorMode = DMA2D_INPUT_ARGB8888;
 #endif
-hdma2d_discovery.XferCpltCallback  = DMA2D_TransferComplete;
-hdma2d_discovery.Instance          = DMA2D;
+	hdma2d_discovery.XferCpltCallback  = DMA2D_TransferComplete;
+	hdma2d_discovery.Instance          = DMA2D;
 
-HAL_DMA2D_ConfigLayer(&hdma2d_discovery, 1);
+	HAL_DMA2D_ConfigLayer(&hdma2d_discovery, 1);
 
     lv_color_t * dest_buf_ofs = dest_buf;
     dest_buf_ofs += dest_width * fill_area->y1;
@@ -461,10 +439,8 @@ static void LCD_Config(void)
 
 	LCD_LayerInit(0, my_fb);
     HAL_LTDC_SetPitch(&hltdc_discovery,800, 0);
-
     __HAL_LTDC_ENABLE(&hltdc_discovery);
 }
-
 static void DMA2D_Config(void)
 {
 	HAL_NVIC_SetPriority(DMA2D_IRQn, 5, 5);
@@ -472,8 +448,6 @@ static void DMA2D_Config(void)
     HAL_NVIC_SetPriority(DSI_IRQn,5 , 5);
     HAL_NVIC_EnableIRQ(DSI_IRQn);
 }
-
-
 static void LTDC_Init(void)
 {
 	/* DeInit */
@@ -509,18 +483,23 @@ static void LTDC_Init(void)
 
 static void CopyBuffer(const uint32_t *pSrc, uint32_t *pDst, uint16_t x, uint16_t y, uint16_t xsize, uint16_t ysize)
 {
+	/**********************
+	 * Using CPU
+	 **********************/
+
 /*	uint32_t row;
-	uint16_t *src16, *dst16;
-	src16 = (uint16_t*)pSrc;
-	dst16 = (uint16_t*)pDst;
-	for(row = y; row < y + ysize; row++) {
-		memcpy(&dst16[row * 800 + x], src16, xsize * 2);
-		src16 += xsize;
+		uint16_t *src16, *dst16;
+		src16 = (uint16_t*)pSrc;
+		dst16 = (uint16_t*)pDst;
+		for(row = y; row < y + ysize; row++) {
+			memcpy(&dst16[row * 800 + x], src16, xsize * 2);
+			src16 += xsize;
 	}*/
 
 	/**********************
-	 * Using DMA2D should be better and faster but makes artifacts on the screen
+	 * Using DMA2D
 	 **********************/
+#if 1
 	uint32_t destination = (uint32_t)pDst + (y * 800 + x) * 2;
 	uint32_t source      = (uint32_t)pSrc;
 
@@ -555,6 +534,7 @@ static void CopyBuffer(const uint32_t *pSrc, uint32_t *pDst, uint16_t x, uint16_
 			}
 		}
 	}
+#endif
 }
 
 void LCD_ReqTear(void)
@@ -666,3 +646,4 @@ void HAL_DSI_EndOfRefreshCallback(DSI_HandleTypeDef* hdsi_discovery)
         }
     }
 }
+
